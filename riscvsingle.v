@@ -190,7 +190,7 @@ module datapath(
   wire [31:0] SrcA, SrcB;
   wire [31:0] Result;
 
-  flopr #(32) pcreg(clk, reset, PCNext, PC);
+  flopenr #(32) pcreg(clk, reset, 1'b1, PCNext, PC);
   adder pcadd4(PC, 32'd4, PCPlus4);
   adder pcaddbranch(PC, ImmExt, PCTarget);
 
@@ -256,16 +256,16 @@ module extend(
 
 endmodule
 
-// Flip-flop com reset síncrono
-module flopr #(parameter WIDTH = 8)(
-  input wire clk, reset,
+// Flip-flop com enable e reset síncrono
+module flopenr #(parameter WIDTH = 8)(
+  input wire clk, reset, en,
   input wire [WIDTH-1:0] d,
   output reg [WIDTH-1:0] q
 );
 
   always @(posedge clk or posedge reset)
     if (reset) q <= 0;
-    else       q <= d;
+    else if (en)  q <= d;
 
 endmodule
 
@@ -353,5 +353,286 @@ module dmem(
 
   always @(posedge clk)
     if (we) RAM[a[31:2]] <= wd;
+
+endmodule
+
+// Pipeline Register entre IF e ID
+module IF_ID (
+    input clk, reset, clear, enable,
+    input  [31:0] InstrF, PCF, PCPlus4F,
+
+    output reg [31:0] InstrD, PCD, PCPlus4D
+);
+
+  always @(posedge clk or posedge reset) begin
+      if (reset) begin
+          InstrD    <= 32'b0;
+          PCD       <= 32'b0;
+          PCPlus4D  <= 32'b0;
+      end else if (enable) begin
+          if (clear) begin
+              InstrD    <= 32'b0;
+              PCD       <= 32'b0;
+              PCPlus4D  <= 32'b0;
+          end else begin
+              InstrD    <= InstrF;
+              PCD       <= PCF;
+              PCPlus4D  <= PCPlus4F;
+          end
+      end
+  end
+
+endmodule
+
+// Pipeline Register entre ID e EX
+module ID_IEx (
+    input clk, reset, clear,
+    input [31:0] RD1D, RD2D, PCD,
+    input [4:0]  Rs1D, Rs2D, RdD,
+    input [31:0] ImmExtD, PCPlus4D,
+
+    output reg [31:0] RD1E, RD2E, PCE,
+    output reg [4:0]  Rs1E, Rs2E, RdE,
+    output reg [31:0] ImmExtE, PCPlus4E
+);
+
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        RD1E <= 32'b0;
+        RD2E <= 32'b0;
+        PCE <= 32'b0;
+        Rs1E <= 5'b0;
+        Rs2E <= 5'b0;
+        RdE <= 5'b0;
+        ImmExtE <= 32'b0;
+        PCPlus4E <= 32'b0;
+    end
+    else if (clear) begin
+        RD1E <= 32'b0;
+        RD2E <= 32'b0;
+        PCE <= 32'b0;
+        Rs1E <= 5'b0;
+        Rs2E <= 5'b0;
+        RdE <= 5'b0;
+        ImmExtE <= 32'b0;
+        PCPlus4E <= 32'b0;
+    end
+    else begin
+        RD1E <= RD1D;
+        RD2E <= RD2D;
+        PCE <= PCD;
+        Rs1E <= Rs1D;
+        Rs2E <= Rs2D;
+        RdE <= RdD;
+        ImmExtE <= ImmExtD;
+        PCPlus4E <= PCPlus4D;
+    end
+end
+
+endmodule
+
+// Pipeline Register entre EX e MEM
+module IEx_IMem (
+    input clk, reset,
+    input [31:0] ALUResultE, WriteDataE,
+    input [4:0]  RdE,
+    input [31:0] PCPlus4E,
+
+    output reg [31:0] ALUResultM, WriteDataM,
+    output reg [4:0]  RdM,
+    output reg [31:0] PCPlus4M
+);
+
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        ALUResultM <= 32'b0;
+        WriteDataM <= 32'b0;
+        RdM        <= 5'b0;
+        PCPlus4M   <= 32'b0;
+    end
+    else begin
+        ALUResultM <= ALUResultE;
+        WriteDataM <= WriteDataE;
+        RdM        <= RdE;
+        PCPlus4M   <= PCPlus4E;
+    end
+end
+
+endmodule
+
+// Pipeline Register entre MEM e WB
+module IMem_IW (
+    input clk, reset,
+    input [31:0] ALUResultM, ReadDataM,
+    input [4:0]  RdM,
+    input [31:0] PCPlus4M,
+
+    output reg [31:0] ALUResultW, ReadDataW,
+    output reg [4:0]  RdW,
+    output reg [31:0] PCPlus4W
+);
+
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        ALUResultW <= 32'b0;
+        ReadDataW  <= 32'b0;
+        RdW        <= 5'b0;
+        PCPlus4W   <= 32'b0;
+    end
+    else begin
+        ALUResultW <= ALUResultM;
+        ReadDataW  <= ReadDataM;
+        RdW        <= RdM;
+        PCPlus4W   <= PCPlus4M;
+    end
+end
+
+endmodule
+
+// Pipeline Register entre ID e EX para sinais de controle
+module c_ID_IEx (
+    input clk, reset, clear,
+    input RegWriteD, MemWriteD, JumpD, BranchD, ALUSrcAD,
+    input [1:0] ALUSrcBD,
+    input [1:0] ResultSrcD,
+    input [3:0] ALUControlD,
+
+    output reg RegWriteE, MemWriteE, JumpE, BranchE, ALUSrcAE,
+    output reg [1:0] ALUSrcBE,
+    output reg [1:0] ResultSrcE,
+    output reg [3:0] ALUControlE
+);
+
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        RegWriteE   <= 1'b0;
+        MemWriteE   <= 1'b0;
+        JumpE       <= 1'b0;
+        BranchE     <= 1'b0;
+        ALUSrcAE    <= 1'b0;
+        ALUSrcBE    <= 2'b00;
+        ResultSrcE  <= 2'b00;
+        ALUControlE <= 4'b0000;
+    end
+    else if (clear) begin
+        RegWriteE   <= 1'b0;
+        MemWriteE   <= 1'b0;
+        JumpE       <= 1'b0;
+        BranchE     <= 1'b0;
+        ALUSrcAE    <= 1'b0;
+        ALUSrcBE    <= 2'b00;
+        ResultSrcE  <= 2'b00;
+        ALUControlE <= 4'b0000;
+    end
+    else begin
+        RegWriteE   <= RegWriteD;
+        MemWriteE   <= MemWriteD;
+        JumpE       <= JumpD;
+        BranchE     <= BranchD;
+        ALUSrcAE    <= ALUSrcAD;
+        ALUSrcBE    <= ALUSrcBD;
+        ResultSrcE  <= ResultSrcD;
+        ALUControlE <= ALUControlD;
+    end
+end
+
+endmodule
+
+// Pipeline Register entre EX e MEM para sinais de controle
+module c_IEx_IM (
+    input clk, reset,
+    input RegWriteE, MemWriteE,
+    input [1:0] ResultSrcE,
+
+    output reg RegWriteM, MemWriteM,
+    output reg [1:0] ResultSrcM
+);
+
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        RegWriteM  <= 1'b0;
+        MemWriteM  <= 1'b0;
+        ResultSrcM <= 2'b00;
+    end
+    else begin
+        RegWriteM  <= RegWriteE;
+        MemWriteM  <= MemWriteE;
+        ResultSrcM <= ResultSrcE;
+    end
+end
+
+endmodule
+
+// Pipeline Register entre MEM e WB para sinais de controle
+module c_IM_IW (
+    input clk, reset,
+    input RegWriteM,
+    input [1:0] ResultSrcM,
+
+    output reg RegWriteW,
+    output reg [1:0] ResultSrcW
+);
+
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        RegWriteW  <= 1'b0;
+        ResultSrcW <= 2'b00;
+    end
+    else begin
+        RegWriteW  <= RegWriteM;
+        ResultSrcW <= ResultSrcM;
+    end
+end
+
+endmodule
+
+// Unidade de Hazard
+module hazardunit(
+    input  [4:0] Rs1D, Rs2D, Rs1E, Rs2E,
+    input  [4:0] RdE, RdM, RdW,
+    input        RegWriteM, RegWriteW,
+    input        ResultSrcE0, PCSrcE,
+
+    output reg [1:0] ForwardAE,
+    output reg [1:0] ForwardBE,
+    output            StallD, StallF,
+    output            FlushD, FlushE
+);
+
+wire lwStall;
+
+// ---------------------------
+// Forwarding Unit
+// ---------------------------
+always @(*) begin
+    ForwardAE = 2'b00;
+    ForwardBE = 2'b00;
+
+    // Forward A
+    if ((Rs1E == RdM) && RegWriteM && (Rs1E != 0))
+        ForwardAE = 2'b10;
+    else if ((Rs1E == RdW) && RegWriteW && (Rs1E != 0))
+        ForwardAE = 2'b01;
+
+    // Forward B
+    if ((Rs2E == RdM) && RegWriteM && (Rs2E != 0))
+        ForwardBE = 2'b10;
+    else if ((Rs2E == RdW) && RegWriteW && (Rs2E != 0))
+        ForwardBE = 2'b01;
+end
+
+// ---------------------------
+// Load-Use Hazard Stall
+// ---------------------------
+assign lwStall = ResultSrcE0 & ((RdE == Rs1D) | (RdE == Rs2D));
+
+assign StallF = lwStall;
+assign StallD = lwStall;
+
+// ---------------------------
+// Control Hazard (branch taken)
+// ---------------------------
+assign FlushE = lwStall | PCSrcE;
+assign FlushD = PCSrcE;
 
 endmodule
