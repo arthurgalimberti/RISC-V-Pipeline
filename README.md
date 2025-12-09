@@ -1,9 +1,9 @@
-**Para compilar**
+**Para compilar:**
 iverilog -o riscv.tb riscvsingle.v
 
-**Para executar**
+**Para executar:**
 vpp riscv.tb
 (finish)
 
-**Para depurar**
+**Para depurar:**
 gtkwave dump.vcd
