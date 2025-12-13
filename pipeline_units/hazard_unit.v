@@ -1,50 +1,43 @@
-// Unidade de Hazard
-module hazardunit(
-    input  [4:0] Rs1D, Rs2D, Rs1E, Rs2E,
+module hazard_unit(
+    input  [4:0] Rs1D, Rs2D,
+    input  [4:0] Rs1E, Rs2E,
     input  [4:0] RdE, RdM, RdW,
     input        RegWriteM, RegWriteW,
-    input        ResultSrcE0, PCSrcE,
-
-    output reg [1:0] ForwardAE,
-    output reg [1:0] ForwardBE,
-    output            StallD, StallF,
-    output            FlushD, FlushE
+    input        ResultSrcE0,
+    input        PCSrcE,          // Sinal do Branch
+    output reg [1:0] ForwardAE, ForwardBE,
+    output       StallF, StallD,
+    output       FlushD, FlushE
 );
 
-wire lwStall;
+  wire loadStall;
 
-// ---------------------------
-// Forwarding Unit
-// ---------------------------
-always @(*) begin
-    ForwardAE = 2'b00;
-    ForwardBE = 2'b00;
+  // Lógica de Forwarding
+  always @(*) begin
+    // ForwardAE
+    if ((Rs1E == RdM) && RegWriteM && (Rs1E != 5'b0))
+      ForwardAE = 2'b10;
+    else if ((Rs1E == RdW) && RegWriteW && (Rs1E != 5'b0))
+      ForwardAE = 2'b01;
+    else
+      ForwardAE = 2'b00;
 
-    // Forward A
-    if ((Rs1E == RdM) && RegWriteM && (Rs1E != 0))
-        ForwardAE = 2'b10;
-    else if ((Rs1E == RdW) && RegWriteW && (Rs1E != 0))
-        ForwardAE = 2'b01;
+    // ForwardBE
+    if ((Rs2E == RdM) && RegWriteM && (Rs2E != 5'b0))
+      ForwardBE = 2'b10;
+    else if ((Rs2E == RdW) && RegWriteW && (Rs2E != 5'b0))
+      ForwardBE = 2'b01;
+    else
+      ForwardBE = 2'b00;
+  end
 
-    // Forward B
-    if ((Rs2E == RdM) && RegWriteM && (Rs2E != 0))
-        ForwardBE = 2'b10;
-    else if ((Rs2E == RdW) && RegWriteW && (Rs2E != 0))
-        ForwardBE = 2'b01;
-end
+  // Load Hazard: parar F e D, zerar E
+  assign loadStall = ResultSrcE0 & ((Rs1D == RdE) | (Rs2D == RdE));
 
-// ---------------------------
-// Load-Use Hazard Stall
-// ---------------------------
-assign lwStall = ResultSrcE0 & ((RdE == Rs1D) | (RdE == Rs2D));
+  assign StallF = loadStall;
+  assign StallD = loadStall;
 
-assign StallF = lwStall;
-assign StallD = lwStall;
-
-// ---------------------------
-// Control Hazard (branch taken)
-// ---------------------------
-assign FlushE = lwStall | PCSrcE;
-assign FlushD = PCSrcE;
+  assign FlushD = PCSrcE;              // Limpa IF/ID se errou a predição
+  assign FlushE = loadStall | PCSrcE;  // Limpa ID/EX se load hazard ou branch
 
 endmodule
