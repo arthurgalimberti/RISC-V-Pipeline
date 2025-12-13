@@ -1,4 +1,3 @@
-
 // Pipeline Register entre EX e MEM para sinais de controle
 module c_IEx_IM (
     input clk, reset,
