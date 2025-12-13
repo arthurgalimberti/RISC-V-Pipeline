@@ -30,7 +30,7 @@ module datapath(
   wire       Flush_Execute;
 
   hazard_unit hazard_control(
-      Rs1D, Rs2D, Rs1E, Rs2E, RdE, RdM, RdW,
+      BranchE, Rs1D, Rs2D, Rs1E, Rs2E, RdE, RdM, RdW,
       RegWriteM, RegWriteW, ResultSrcE[0],
       PCSrcE, ForwardA, ForwardB,
       Stall_Fetch, Stall_Decode, Flush_Decode, Flush_Execute
@@ -45,7 +45,7 @@ module datapath(
       PCPlus4_IF, PCTargetE, PCSrcE, PC_Next
   );
 
-  flipflop #(32) pc_reg(
+  flopenr #(32) pc_reg(
       clk, reset, ~Stall_Fetch, PC_Next, PCF
   );
 
@@ -101,7 +101,7 @@ module datapath(
       RD1E, RD2E, PCE, Imm_ExtE, PCPlus4E,
       RdE, Rs1E, Rs2E
   );
-  
+
   // EX - Execute
   
   wire [31:0] RD1E;

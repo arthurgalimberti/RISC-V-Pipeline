@@ -8,11 +8,11 @@ module controller(
   output wire PCSrc, ALUSrc,
   output wire RegWrite, Jump,
   output wire [1:0] ImmSrc,
-  output wire [2:0] ALUControl
+  output wire [2:0] ALUControl,
+  output wire Branch
 );
 
   wire [1:0] ALUOp;
-  wire Branch;
 
   maindec md(
     op, ResultSrc, MemWrite, Branch,

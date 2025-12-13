@@ -1,4 +1,5 @@
 module hazard_unit(
+    input  BranchE,
     input  [4:0] Rs1D, Rs2D,
     input  [4:0] Rs1E, Rs2E,
     input  [4:0] RdE, RdM, RdW,
@@ -32,12 +33,14 @@ module hazard_unit(
   end
 
   // Load Hazard: parar F e D, zerar E
-  assign loadStall = ResultSrcE0 & ((Rs1D == RdE) | (Rs2D == RdE));
+  assign loadStall = ResultSrcE0  &
+                   ((Rs1D == RdE) | (Rs2D == RdE));
+
 
   assign StallF = loadStall;
   assign StallD = loadStall;
 
-  assign FlushD = PCSrcE;              // Limpa IF/ID se errou a predição
+  assign FlushD = PCSrcE;
   assign FlushE = loadStall | PCSrcE;  // Limpa ID/EX se load hazard ou branch
 
 endmodule

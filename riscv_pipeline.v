@@ -11,7 +11,7 @@ module top(
   wire [31:0] ReadData;
 
   // Processador e Memórias
-  riscvsingle rvsingle(
+  riscv_pipeline rvsingle(
       clk,
       reset,
       PC,
@@ -59,7 +59,7 @@ module top(
 
 endmodule
 
-module riscvsingle(
+module riscv_pipeline(
     input        clk,
     input        reset,
     output [31:0] PC,
@@ -103,9 +103,9 @@ module riscvsingle(
       ALUSrcD,
       RegWriteD,
       JumpD,
-      BranchD,
       ImmSrcD,
-      ALUControlD
+      ALUControlD,
+      BranchD
   );
 
   // Datapath
@@ -132,5 +132,3 @@ module riscvsingle(
   );
 
 endmodule
-
-

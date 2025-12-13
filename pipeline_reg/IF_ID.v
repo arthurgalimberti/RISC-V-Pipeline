@@ -12,24 +12,22 @@ module reg_if_id(
     output reg [31:0] PCPlus4D
 );
 
-  always @(posedge clk or posedge reset) begin
-    if (reset) begin
-      InstrD   <= 32'b0;
-      PCD      <= 32'b0;
-      PCPlus4D <= 32'b0;
-    end else if (en) begin
-      if (clear) begin
-        InstrD   <= 32'b0;
-        PCD      <= 32'b0;
-        PCPlus4D <= 32'b0;
-      end else begin
-        // Passa os valores do estágio IF para ID
-        InstrD   <= InstrF;
-        PCD      <= PCF;
-        PCPlus4D <= PCPlus4F;
-      end
-    end
-    // se en == 0: mantém o valor (stall)
+always @(posedge clk or posedge reset) begin
+  if (reset) begin
+    InstrD   <= 32'b0;
+    PCD      <= 32'b0;
+    PCPlus4D <= 32'b0;
+  end else if (clear) begin
+    // FLUSH TEM PRIORIDADE
+    InstrD   <= 32'b0;
+    PCD      <= 32'b0;
+    PCPlus4D <= 32'b0;
+  end else if (en) begin
+    InstrD   <= InstrF;
+    PCD      <= PCF;
+    PCPlus4D <= PCPlus4F;
   end
+  // else: stall → mantém valores
+end
 
 endmodule
