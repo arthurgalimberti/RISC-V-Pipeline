@@ -1,4 +1,3 @@
-
 // Pipeline Register entre ID e EX para sinais de controle
 module c_ID_IEx (
     input clk, reset, clear,

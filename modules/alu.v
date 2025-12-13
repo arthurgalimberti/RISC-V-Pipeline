@@ -1,4 +1,3 @@
-
 // Unidade Lógica e Aritmética (ALU)
 module alu(
   input wire [31:0] a, b,
