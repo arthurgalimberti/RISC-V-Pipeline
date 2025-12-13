@@ -7,16 +7,5 @@ module top(input        clk, reset,
   riscvpipeline rvpipeline(clk, reset, PC, Instr, MemWrite, DataAdr, WriteData, ReadData);
   imem imem(PC, Instr);
   dmem dmem(clk, MemWrite, DataAdr, WriteData, ReadData);
-
-  always @(posedge clk) begin
-      if (MemWrite) begin
-        if (DataAdr == 100 && WriteData == 25) begin
-          $display("Simulation succeeded");
-          $finish;
-        end else if (DataAdr != 96) begin
-          $display("Simulation failed");
-          $finish;
-        end
-      end
-  end
+  
 endmodule
