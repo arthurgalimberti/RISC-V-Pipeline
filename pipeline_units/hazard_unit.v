@@ -1,4 +1,3 @@
-
 // Unidade de Hazard
 module hazardunit(
     input  [4:0] Rs1D, Rs2D, Rs1E, Rs2E,
